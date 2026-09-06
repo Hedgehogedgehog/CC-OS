@@ -1,7 +1,7 @@
 local user = "Hedghogedgehog"
 local repo = "CC-OS"
 local branch = "main"
-local baseURL = "https://raw.githubusercontent.com/" .. user .. "/" .. repo .. "/refs/heads/main/" .. branch .. "/"
+local baseURL = "https://raw.githubusercontent.com/" .. user .. "/" .. repo .. "/refs/heads/" .. branch .. "/"
 
 local sysFolders = {
     "root/installer",
