@@ -5,7 +5,7 @@ local baseURL = "https://raw.githubusercontent.com/" .. user .. "/" .. repo .. "
 
 local rootPath = "root"
 
-local installerLogPath = "installerLog.txt"
+local installerLogPath = "installerLog.log"
 
 local function clearLog()
     fs.delete(installerLogPath)
@@ -18,17 +18,16 @@ local function log(message)
     file.close()
 end
 
-local function fetchFolder(folder, baseURL)
-    --local link = baseURL .. folder
+local function fetchFile(path, baseURL)
+    local link = baseURL .. path
 
-    --print("Fetching folder: " , folder, " From: " , link)
+    local request = http.get(link)
+    log(request.readAll())
 
-    --local request = http.get("https://raw.githubusercontent.com/Hedgehogedgehog/CC-OS/refs/heads/main/root/sys/startup.lua")
-    --local request = http.get("https://example.tweaked.cc")
-    --local request = http.get(link)
-    --print(request.readAll())
+end
 
-    local folderPath = folder
+local function fetchFolder(folder)
+
 
     local APIURL = ("https://api.github.com/repos/%s/%s/contents/%s?ref=%s"):format(user, repo, folder, branch)
 
@@ -41,7 +40,19 @@ local function fetchFolder(folder, baseURL)
     
     ---@type table
     local contents = textutils.unserialiseJSON(APIResponse.readAll())
-    log(textutils.serialize(contents))
+    --log(textutils.serialize(contents))
+
+    APIResponse.close()
+
+    for _, file in pairs(contents) do
+	    if file.type == "file" then
+            log("Fetching file: " .. file.path)
+            fetchFile(file.path, baseURL)
+        elseif file.type == "dir" then
+            log("Fetching folder: " .. file.path)
+            fetchFolder(file.path)
+        end
+    end
 end
 
 local function configComputerSettings()
@@ -55,8 +66,7 @@ end
 
 local function installOS()
     log("Installing OS")
-    fetchFolder("root", baseURL)
-
+    fetchFolder(rootPath)
     --shell.run("clear")
 end
 
