@@ -115,4 +115,4 @@ end
 readyInstall()
 log("install complete")
 log("Booting into OS if the OS does not exist the computer will boot into Crafty-OS")
-shell.run("reboot")
+shell.run("/root/sys/main.lua")
