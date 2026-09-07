@@ -1,0 +1,6 @@
+{
+    "Lua.workspace.maxPreload": 5000,
+    "Lua.workspace.ignoreDir": [
+        "^craftos%-pc://0/.*"
+    ]
+}

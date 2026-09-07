@@ -18,11 +18,25 @@ local function log(message)
     file.close()
 end
 
+local function createFolder (folderPath)
+    if fs.exists(folderPath) then
+        return
+    end
+    fs.makeDir(folderPath)
+    log("Created folder: " .. folderPath)
+end
+
+local function createFile(contents, path)
+    local file = fs.open(path, "w+")
+    file.write(contents)
+    file.close()
+end
+
 local function fetchFile(path, baseURL)
     local link = baseURL .. path
 
     local request = http.get(link)
-    log(request.readAll())
+    return request.readAll()
 
 end
 
@@ -47,9 +61,11 @@ local function fetchFolder(folder)
     for _, file in pairs(contents) do
 	    if file.type == "file" then
             log("Fetching file: " .. file.path)
-            fetchFile(file.path, baseURL)
+            local fileContents = fetchFile(file.path, baseURL)
+            createFile(fileContents, file.path)
         elseif file.type == "dir" then
             log("Fetching folder: " .. file.path)
+            createFolder(file.path)
             fetchFolder(file.path)
         end
     end

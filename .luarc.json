@@ -1,0 +1,9 @@
+{
+  "workspace.checkThirdParty": false,
+  "workspace.library": [],
+  "workspace.maxPreload": 1000,
+  "workspace.preloadFileSize": 100,
+  "workspace.ignoreDir": [
+    "*"
+  ]
+}
