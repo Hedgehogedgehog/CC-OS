@@ -7,7 +7,6 @@ As of yet **there is no uninstaller** just run:
 rm root
 rm installerLog.log
 rm startup.lua
-
 ```
 *Yes in the  time it took to write this I could have made one.*
 
