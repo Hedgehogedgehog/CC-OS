@@ -104,7 +104,7 @@ end
 
 local function setupStartup()
     local startupScriptPath = "startup.lua"
-    createFile(shell.run("root/sys/main.lua"), startupScriptPath)
+    createFile('shell.run("root/sys/main.lua")', startupScriptPath)
     
 end
 
