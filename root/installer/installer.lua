@@ -101,7 +101,16 @@ local function installOS()
     --shell.run("clear")
 end
 
+
+local function setupStartup()
+    local startupScriptPath = "startup.lua"
+    createFile(shell.run("root/sys/main.lua"), startupScriptPath)
+    
+end
+
+
 local function readyInstall()
+    setupStartup()
     clearLog()
     configComputerSettings()
     local errors = installOS()
