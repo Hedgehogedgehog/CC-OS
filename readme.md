@@ -1,2 +1,2 @@
 This is the Read me for CC-OS a computer craft OS (tequicly not an OS) for reffrence the folder labled "root" is not the root of the project but is the root of the OS.
-To install on a Computer craft computer run "http.get
+To install on a Computer craft computer simply insert the boot disk how you put the code on the disk uknown and not my ressponsibility

@@ -7,4 +7,5 @@ function ScanForMachines()
 
 end
 
-print(ScanForMachines)
+shell.run("clear")
+print("OS initializing...")
