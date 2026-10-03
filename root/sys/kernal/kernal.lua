@@ -1,6 +1,6 @@
 shell.run("root/installer/installer.lua")
 shell.run("clear")
-print("OS initializing...")
+log("OS initializing...", "kernal")
 
 --shell.run("/root/sys/peripherals/scripts/main.lua")
 
