@@ -122,6 +122,6 @@ local function readyInstall()
 end
 
 readyInstall()
-log("install complete")
+log("install process complete")
 log("Booting into OS if the OS does not exist the computer will boot into Crafty-OS")
 shell.run("/root/sys/main.lua")
