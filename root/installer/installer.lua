@@ -124,4 +124,4 @@ end
 readyInstall()
 log("install process complete")
 log("Booting into OS if the OS does not exist the computer will boot into Crafty-OS")
-shell.run("/root/sys/main.lua")
+shell.run("/root/sys/kernal/kernal.lua")
