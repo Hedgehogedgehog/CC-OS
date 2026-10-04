@@ -1,6 +1,6 @@
 local user = "Hedgehogedgehog"
 local repo = "CC-OS"
-local branch = "rewrite-installer"
+local branch = "main"
 local baseURL = "https://raw.githubusercontent.com/" .. user .. "/" .. repo .. "/refs/heads/" .. branch .. "/"
 
 local rootPath = "root"
