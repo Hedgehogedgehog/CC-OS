@@ -1,6 +1,6 @@
 local user = "Hedgehogedgehog"
 local repo = "CC-OS"
-local branch = "main"
+local branch = "rewrite-installer"
 local baseURL = "https://raw.githubusercontent.com/" .. user .. "/" .. repo .. "/refs/heads/" .. branch .. "/"
 
 local rootPath = "root"
@@ -27,9 +27,19 @@ local function createFolder (folderPath)
 end
 
 local function createFile(contents, path)
+
+    local dir = fs.getDir(path)
+    if dir and dir ~= "" and not fs.exists(dir) then
+        fs.makeDir(dir)
+    end
+
     local file = fs.open(path, "w+")
-    file.write(contents)
-    file.close()
+    if file then
+        file.write(contents)
+        file.close()
+        return true
+    end
+    return false
 end
 
 local function fetchFile(path, baseURL)
@@ -48,6 +58,8 @@ local function fetchFolder(folder)
 
 
     local APIURL = ("https://api.github.com/repos/%s/%s/contents/%s?ref=%s"):format(user, repo, folder, branch)
+    --local APIURL = ("https://api.github.com/repos/%s/%s/git/trees/%s?recursive=1"):format(user, repo, branch)
+    
 
     local APIResponse = http.get(APIURL)
 
@@ -86,6 +98,49 @@ local function fetchFolder(folder)
     end
 end
 
+local function installRoot()
+
+    local APIURL = ("https://api.github.com/repos/%s/%s/git/trees/%s?recursive=1"):format(user, repo, branch)
+
+    local APIResponse = http.get(APIURL)
+
+    if not APIResponse then 
+        log("Failed to fetch folder if you have a older version of CC-OS installed it will continue to work else try to install agien later")
+        return "ERROR"
+    end
+    
+    ---@type table
+    local contents = textutils.unserialiseJSON(APIResponse.readAll())
+    --log(textutils.serialize(contents))
+
+    APIResponse.close()
+
+    local rootPrefix = "root/"
+
+    for _, item in pairs(contents) do
+	    if item.type == "blob" and item.path:sub(1, #rootPrefix) == rootPrefix then
+
+            log("Fetching item: " .. item.path)
+            local fileContents = fetchFile(item.path, baseURL)
+            if fileContents == "ERROR" then
+                return "ERROR"
+            end
+
+            createFile(fileContents, item.path)
+
+        elseif item.type == "dir" then
+
+            log("Fetching folder: " .. item.path)
+            createFolder(item.path)
+            local errors = fetchFolder(item.path)
+            if errors == "ERROR" then
+                return "ERROR"
+            end
+
+        end
+    end
+end
+
 local function configComputerSettings()
     log("Configuring Computer Settings")
 
@@ -97,8 +152,9 @@ end
 
 local function installOS()
     log("Installing OS")
-    fetchFolder(rootPath)
+    --fetchFolder(rootPath)
     --shell.run("clear")
+    installRoot()
 end
 
 
