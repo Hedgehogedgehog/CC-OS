@@ -54,50 +54,6 @@ local function fetchFile(path, baseURL)
 
 end
 
-local function fetchFolder(folder)
-
-
-    local APIURL = ("https://api.github.com/repos/%s/%s/contents/%s?ref=%s"):format(user, repo, folder, branch)
-    --local APIURL = ("https://api.github.com/repos/%s/%s/git/trees/%s?recursive=1"):format(user, repo, branch)
-    
-
-    local APIResponse = http.get(APIURL)
-
-    if not APIResponse then 
-        log("Failed to fetch folder if you have a older version of CC-OS installed it will continue to work else try to install agien later")
-        return "ERROR"
-    end
-    
-    ---@type table
-    local contents = textutils.unserialiseJSON(APIResponse.readAll())
-    --log(textutils.serialize(contents))
-
-    APIResponse.close()
-
-    for _, file in pairs(contents) do
-	    if file.type == "file" then
-
-            log("Fetching file: " .. file.path)
-            local fileContents = fetchFile(file.path, baseURL)
-            if fileContents == "ERROR" then
-                return "ERROR"
-            end
-
-            createFile(fileContents, file.path)
-
-        elseif file.type == "dir" then
-
-            log("Fetching folder: " .. file.path)
-            createFolder(file.path)
-            local errors = fetchFolder(file.path)
-            if errors == "ERROR" then
-                return "ERROR"
-            end
-
-        end
-    end
-end
-
 local function installRoot()
 
     local APIURL = ("https://api.github.com/repos/%s/%s/git/trees/%s?recursive=1"):format(user, repo, branch)
@@ -133,16 +89,6 @@ local function installRoot()
             end
 
             createFile(fileContents, item.path)
-
-        elseif item.type == "dir" then
-
-            log("Fetching folder: " .. item.path)
-            createFolder(item.path)
-            local errors = fetchFolder(item.path)
-            if errors == "ERROR" then
-                return "ERROR"
-            end
-
         end
     end
 end
