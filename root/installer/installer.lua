@@ -18,14 +18,6 @@ local function log(message)
     file.close()
 end
 
-local function createFolder (folderPath)
-    if fs.exists(folderPath) then
-        return
-    end
-    fs.makeDir(folderPath)
-    log("Created folder: " .. folderPath)
-end
-
 local function createFile(contents, path)
 
     local dir = fs.getDir(path)

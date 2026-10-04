@@ -8,24 +8,24 @@ _G.log = function(message, programName, printToConsole )
         printToConsole = true 
     end
 
-    if programName then
-        local fileLogPath = progLogPath .. programName .. ".log"
-
-        local file = fs.open(mainLog, "a")
-        if file then
-            file.writeLine("[" .. textutils.formatTime(os.time(), true) .. "] " .. message)
-            file.close()
-        end
-    end
-    
-    local file = fs.open(fileLogPath, "a")
+    local file = fs.open(mainLog, "a")
     if file then
         file.writeLine("[" .. textutils.formatTime(os.time(), true) .. "] " .. message)
         file.close()
     end
     
-    if printToConsole then
-        print("[" .. textutils.formatTime(os.time(), true) .. "] " .. message)
-    end
 
+    if programName then
+        local fileLogPath = progLogPath .. programName .. ".log"
+
+        local file = fs.open(fileLogPath, "a")
+        if file then
+            file.writeLine("[" .. textutils.formatTime(os.time(), true) .. "] " .. message)
+            file.close()
+        end
+        
+        if printToConsole then
+            print("[" .. textutils.formatTime(os.time(), true) .. "] " .. message)
+        end
+    end
 end
