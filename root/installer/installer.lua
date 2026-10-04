@@ -101,8 +101,9 @@ end
 local function installRoot()
 
     local APIURL = ("https://api.github.com/repos/%s/%s/git/trees/%s?recursive=1"):format(user, repo, branch)
+    local APIResponse = http.get(APIURL, { ["User-Agent"] = "CC-OS-Installer" })
 
-    local APIResponse = http.get(APIURL)
+    --local APIResponse = http.get(APIURL)
 
     if not APIResponse then 
         log("Failed to fetch folder if you have a older version of CC-OS installed it will continue to work else try to install agien later")
@@ -115,9 +116,14 @@ local function installRoot()
 
     APIResponse.close()
 
+    if not contents or not contents.tree then
+        log("ERROR: Invalid tree data received from GitHub.")
+        return "ERROR"
+    end
+
     local rootPrefix = "root/"
 
-    for _, item in pairs(contents) do
+    for _, item in pairs(contents.tree) do
 	    if item.type == "blob" and item.path:sub(1, #rootPrefix) == rootPrefix then
 
             log("Fetching item: " .. item.path)
