@@ -23,9 +23,8 @@ _G.log = function(message, programName, printToConsole )
             file.writeLine("[" .. textutils.formatTime(os.time(), true) .. "] " .. message)
             file.close()
         end
-        
-        if printToConsole then
-            print("[" .. textutils.formatTime(os.time(), true) .. "] " .. message)
-        end
+    end
+    if printToConsole then
+        print("[" .. textutils.formatTime(os.time(), true) .. "] " .. message)
     end
 end
