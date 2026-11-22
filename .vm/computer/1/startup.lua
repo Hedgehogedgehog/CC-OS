@@ -1,1 +1,0 @@
-shell.run("/root/sys/kernal/kernal.lua")

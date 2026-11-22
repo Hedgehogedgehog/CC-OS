@@ -1,4 +1,0 @@
-{
-  [ "motd.enable" ] = false,
-  [ "ccos.dev" ] = false,
-}
