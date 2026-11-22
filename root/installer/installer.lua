@@ -39,13 +39,13 @@ end
 local InstallerSaves = {}
 InstallerSaves.__index = InstallerSaves
 
-installerSavePath = "/installer/saves/installerSave.json"
+InstallerSaves.installerSavePath = "/root/installer/saves/installerSave.json"
 
 function InstallerSaves:new(
     savePath
 )
     local self = setmetatable({}, InstallerSaves)
-    self.savePath = savePath or installerSavePath
+    self.savePath = savePath or InstallerSaves.installerSavePath
 
     if fs.exists(fs.getDir(self.savePath)) then
         return self
