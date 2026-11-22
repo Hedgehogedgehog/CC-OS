@@ -7,11 +7,13 @@
 -- emulated peripherals so the device scanner / dashboard has something to find,
 -- then boots the OS like a real computer would.
 
-settings.set("ccos.dev", true)
+-- run-local.ps1 -Installer turns dev mode off so the installer runs like on a real PC
+settings.set("ccos.dev", rawget(_G, "CCOS_RUN_INSTALLER") ~= true)
 settings.set("motd.enable", false)
 settings.save()
 
-if periphemu and not CCOS_NO_PERIPHERALS then
+local periphemu = _G.periphemu
+if periphemu and not rawget(_G, "CCOS_NO_PERIPHERALS") then
     local function add(name, kind, ...)
         if peripheral.isPresent(name) then return peripheral.wrap(name) end
         local ok = pcall(periphemu.create, name, kind, ...)
@@ -21,7 +23,7 @@ if periphemu and not CCOS_NO_PERIPHERALS then
     -- Every PC gets a modem on network 0 so the CC-OS PCs can see each other.
     add("back", "modem")
 
-    if CCOS_SECONDARY then
+    if rawget(_G, "CCOS_SECONDARY") == true then
         -- Backup PCs: a couple of devices of their own to share over the network.
         add("left", "speaker")
         local chest = add("chest_" .. os.getComputerID(), "chest")
@@ -46,7 +48,7 @@ if periphemu and not CCOS_NO_PERIPHERALS then
         end
         -- Extra CC-OS PCs (each opens its own window and boots CC-OS too).
         -- CraftOS-PC wants the computer id as the "side"; the new PC boots by itself.
-        for _, id in ipairs(CCOS_EXTRA or {}) do
+        for _, id in ipairs(rawget(_G, "CCOS_EXTRA") or {}) do
             local ok, err = pcall(periphemu.create, id, "computer")
             if not ok then print("Could not open extra PC #" .. id .. ": " .. tostring(err)) end
         end

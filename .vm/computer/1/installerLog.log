@@ -1,0 +1,10 @@
+Configuring Computer Settings
+Installing OS
+Fetching item: root/installer/installer.lua
+Fetching item: root/sys/kernal/init.lua
+Fetching item: root/sys/kernal/kernal.lua
+Fetching item: root/sys/logs/logger.lua
+Fetching item: root/sys/peripherals/scripts/main.lua
+OS installed successfully
+install process complete
+Booting into OS if the OS does not exist the computer will boot into Crafty-OS

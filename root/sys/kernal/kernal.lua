@@ -1,4 +1,6 @@
-shell.run("root/installer/installer.lua")
+if not settings.get("ccos.dev") then
+    shell.run("/root/installer/installer.lua", "--boot")
+end
 shell.run("clear")
 
 shell.run("root/sys/logs/logger.lua")

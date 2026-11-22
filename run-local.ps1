@@ -16,10 +16,12 @@
   .\run-local.ps1 -Computers 1    # back to a single PC
   .\run-local.ps1 -Fresh          # wipe the VM first (new config, logs, settings)
   .\run-local.ps1 -NoPeripherals  # boot without the emulated test devices
+  .\run-local.ps1 -Installer      # let the GitHub installer run on boot (turns dev mode off)
 #>
 param(
     [switch]$Fresh,
     [switch]$NoPeripherals,
+    [switch]$Installer,
     [int]$Id = 1,
     [ValidateRange(0, 8)][int]$Computers = 0,   # 0 = same as last time
     [string]$CraftOS = "$env:LOCALAPPDATA\CraftOS-PC\CraftOS-PC.exe"
@@ -80,6 +82,7 @@ foreach ($pc in $ids) {
 
     $header = if ($pc -eq $Id) { "CCOS_EXTRA = { $extra }" } else { "CCOS_SECONDARY = true" }
     if ($NoPeripherals) { $header += "`nCCOS_NO_PERIPHERALS = true" }
+    if ($Installer) { $header += "`nCCOS_RUN_INSTALLER = true" }
     [IO.File]::WriteAllText((Join-Path $computer "startup.lua"), "$header`n$template")
 }
 
