@@ -1,6 +1,6 @@
 local user = "Hedgehogedgehog"
 local repo = "CC-OS"
-local branch = "feature/cheapInstaller"
+local branch = "main"
 
 local rootPath = "root"
 
