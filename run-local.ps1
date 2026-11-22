@@ -80,9 +80,10 @@ foreach ($pc in $ids) {
     if ($LASTEXITCODE -ge 8) { Write-Error "robocopy (OSadditinalResources) failed ($LASTEXITCODE)" }
     New-Item -ItemType Directory -Force (Join-Path $computer "UserData") | Out-Null
 
-    $header = if ($pc -eq $Id) { "CCOS_EXTRA = { $extra }" } else { "CCOS_SECONDARY = true" }
-    if ($NoPeripherals) { $header += "`nCCOS_NO_PERIPHERALS = true" }
-    if ($Installer) { $header += "`nCCOS_RUN_INSTALLER = true" }
+    # Set these on _G: plain globals in startup.lua land in the program's own env, which rawget(_G, ...) can't see
+    $header = if ($pc -eq $Id) { "_G.CCOS_EXTRA = { $extra }" } else { "_G.CCOS_SECONDARY = true" }
+    if ($NoPeripherals) { $header += "`n_G.CCOS_NO_PERIPHERALS = true" }
+    if ($Installer) { $header += "`n_G.CCOS_RUN_INSTALLER = true" }
     [IO.File]::WriteAllText((Join-Path $computer "startup.lua"), "$header`n$template")
 }
 

@@ -4,7 +4,7 @@ local branch = "feature/cheapInstaller"
 
 local rootPath = "root"
 
-local installerSavePath = "/installer/saves/installerSave.json"
+local installerSavePath = "/root/installer/saves/installerSave.json"
 
 -- ------------------------------------------------------------------
 

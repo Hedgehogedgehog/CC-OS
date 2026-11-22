@@ -1,10 +1,14 @@
 Configuring Computer Settings
 Installing OS
-Fetching item: root/installer/installer.lua
-Fetching item: root/sys/kernal/init.lua
-Fetching item: root/sys/kernal/kernal.lua
-Fetching item: root/sys/logs/logger.lua
-Fetching item: root/sys/peripherals/scripts/main.lua
+Checking for updates...
+No previous commit found. This is a fresh install.
+Install d3d21ed: 5 new, 0 changed, 0 removed
+[1/5] root/installer/installer.lua
+[2/5] root/sys/kernal/init.lua
+[3/5] root/sys/kernal/kernal.lua
+[4/5] root/sys/logs/logger.lua
+[5/5] root/sys/peripherals/scripts/main.lua
+Installed d3d21ed
 OS installed successfully
 install process complete
 Booting into OS if the OS does not exist the computer will boot into Crafty-OS
