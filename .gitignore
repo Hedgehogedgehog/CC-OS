@@ -1,1 +1,7 @@
-.vm/
+# Local CraftOS-PC VM (run-local.ps1): commit the shared setup
+# (.vm/config/global.json, .vm/peripherals/*.txt), not per-machine state.
+.vm/computer/
+.vm/config/*
+!.vm/config/global.json
+.vm/computers.txt
+.vm/peripherals-used.txt

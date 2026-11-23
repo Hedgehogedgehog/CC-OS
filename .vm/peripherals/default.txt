@@ -1,0 +1,36 @@
+# CC-OS VM peripheral list (used by run-local.ps1 -Peripherals <file>)
+#
+# One peripheral per line:   <name/side> <type> [options...]
+#   types:   anything periphemu.create accepts (modem, monitor, speaker, drive,
+#            printer, chest, energy, tank, debugger, ...)
+#   options: disk=<id>                      drive: insert floppy disk <id>
+#            <slot>=<item>[*<count>]        chest: put an item stack in a slot
+#            anything else                  passed to periphemu.create as an
+#                                           extra argument (numbers converted)
+#
+# Sections pick which VM computers get the lines below them:
+#   [all]  every PC (default before any section)
+#   [main]  the first PC     [secondary]  the extra PCs (-Computers 2+)
+#   [3]  only computer id 3  [2, 3]  computers 2 and 3
+# '{id}' in a name becomes the computer's id (e.g. chest_{id}).
+# '#' starts a comment.
+
+[all]
+back      modem                 # needed so the CC-OS PCs can see each other
+left      speaker
+
+[main]
+top       monitor               # opens a second window: the dashboard shows up here
+right     drive
+bottom    printer
+chest_0   chest    1=minecraft:cobblestone*64  2=minecraft:iron_ingot*23  5=minecraft:diamond*4
+energy_0  energy
+tank_0    tank
+# Four floppy drives with blank disks to try data / backup / personal disks.
+drive_1   drive    disk=101
+drive_2   drive    disk=102
+drive_3   drive    disk=103
+drive_4   drive    disk=104
+
+[secondary]
+chest_{id} chest   1=minecraft:redstone*32

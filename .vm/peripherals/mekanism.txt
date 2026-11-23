@@ -1,0 +1,17 @@
+# Mock Mekanism devices (faked in Lua by dev/mock-peripherals.lua). Format: see default.txt
+# Combine with another list:  .\run-local.ps1 -Peripherals default,mekanism
+# Types: energyCube inductionPort fissionReactorLogicAdapter turbineValve
+#        boilerValve chemicalTank digitalMiner   (options listed in mock-peripherals.lua)
+
+[main]
+energyCube_0                  energyCube                  tier=ULTIMATE max=6.4e8 fill=0.7
+inductionPort_0               inductionPort               max=2.56e11 fill=0.4 cells=8 providers=4
+fissionReactorLogicAdapter_0  fissionReactorLogicAdapter  burn=2 maxburn=20
+turbineValve_0                turbineValve
+boilerValve_0                 boilerValve
+chemicalTank_0                chemicalTank                chemical=mekanism:hydrogen fill=0.3
+chemicalTank_1                chemicalTank                chemical=mekanism:oxygen fill=0.6
+digitalMiner_0                digitalMiner                radius=32 ores=800
+
+[secondary]
+energyCube_{id}               energyCube                  tier=BASIC fill=0.2

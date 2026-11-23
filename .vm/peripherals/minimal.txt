@@ -1,0 +1,6 @@
+# Just networking + a monitor for the dashboard. Format: see default.txt
+[all]
+back      modem
+
+[main]
+top       monitor
