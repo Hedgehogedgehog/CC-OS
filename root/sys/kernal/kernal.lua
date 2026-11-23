@@ -3,12 +3,11 @@ if not settings.get("ccos.dev") then
 end
 shell.run("clear")
 
-shell.run("root/sys/logs/logger.lua")
+_G.Logger = dofile("/root/sys/logs/logger.lua")
 
+KernalLogger = Logger:new("kernal/kernal.log")
 
-log("OS initializing...", "kernal")
-
---shell.run("/root/sys/peripherals/scripts/main.lua")
+KernalLogger:log("OS initializing...")
 
 local id = multishell.launch({}, ("/root/sys/peripherals/scripts/main.lua"))
 multishell.setTitle(id, "peripherals!")

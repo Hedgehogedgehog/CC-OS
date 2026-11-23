@@ -366,18 +366,33 @@ function Installer:checkForUpdates()
     return latestCommit
 
 end
--- ----------------------------------------------------------------
 
-local function configComputerSettings()
+function Installer:configComputerSettings()
     MainLogger:log("Configuring Computer Settings")
 
     shell.run("set motd.enable false")
 
+    if settings.get("shell.allow_disk_startup") ~= false then
+        settings.set("shell.allow_disk_startup", false)
+        settings.save()
+    end
+
     shell.run("clear")
 end
 
+function Installer:readyInstall()
+    Installer:setupStartup()
+    MainLogger:clearLog()
+    Installer:configComputerSettings()
+    local errors = Installer:installOS()
+    if errors == "ERROR" then
+        MainLogger:log("There was an error installing the OS if you have a older version of CC-OS installed it will continue to work else try to install agien later")
+    else 
+        MainLogger:log("OS installed successfully")
+    end
+end
 
-local function installOS()
+function Installer:installOS()
     MainLogger:log("Installing OS")
     --fetchFolder(rootPath)
     --shell.run("clear")
@@ -392,7 +407,7 @@ local function installOS()
     end
 end
 
-local function createFile(contents, path)
+function Installer:createFile(contents, path)
 
     local dir = fs.getDir(path)
     if dir and dir ~= "" and not fs.exists(dir) then
@@ -408,29 +423,16 @@ local function createFile(contents, path)
     return false
 end
 
-local function setupStartup()
+function Installer:setupStartup()
     local startupScriptPath = "startup.lua"
-    createFile('shell.run("/root/sys/kernal/kernal.lua")', startupScriptPath)
+    Installer:createFile('shell.run("/root/sys/kernal/kernal.lua")', startupScriptPath)
 end
+-- ----------------------------------------------------------------
 
-
-
-local function readyInstall()
-    setupStartup()
-    MainLogger:clearLog()
-    configComputerSettings()
-    local errors = installOS()
-    if errors == "ERROR" then
-        MainLogger:log("There was an error installing the OS if you have a older version of CC-OS installed it will continue to work else try to install agien later")
-    else 
-        MainLogger:log("OS installed successfully")
-    end
-end
 
 local installerLogPath = "installerLog.log"
 MainLogger = Logger:new(installerLogPath)
 
-readyInstall()
+Installer:readyInstall()
 MainLogger:log("install process complete")
-MainLogger:log("Booting into OS if the OS does not exist the computer will boot into Crafty-OS")
---shell.run("/root/sys/kernal/kernal.lua")
+MainLogger:log("Booting into CC-OS. If it is unavailable, the computer will fall back to Crafty-OS")
