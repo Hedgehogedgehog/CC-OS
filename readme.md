@@ -24,3 +24,11 @@ Insert image of OS here
 
 # AI:
 AI was used in the creation of this project for example the enetirity of the dev tools vm section and the code was bug fixed an assisted in writing by AI along with an AI prototype but all code in the main project was at least overseen by a person if not mostly written by them. Also the docs above on the dev tools are AI.
+
+# plan:
+Use this (from AI prototype)
+```
+package.path = "/root/sys/?.lua;/root/sys/?/init.lua;"
+    .. "/OSadditinalResources/Classes/?.lua;/OSadditinalResources/Classes/?/init.lua;"
+    .. package.path
+```
