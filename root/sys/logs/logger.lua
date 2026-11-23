@@ -34,7 +34,6 @@ end
 
 ---Logs a message to the main log, and to the program's own log if a name is given.
 ---@param message any The message to log (converted with tostring).
----@param programName? string Also write to `<progLogPath><programName>.log`.
 ---@param echo? boolean Print the line to the screen too. Defaults to true.
 function Logger:log(message, echo)
     if echo == nil then
