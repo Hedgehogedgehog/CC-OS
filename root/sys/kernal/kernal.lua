@@ -2,7 +2,7 @@ package.path = "/root/sys/libs/?.lua;/root/sys/libs/?/init.lua;" .. package.path
 
 _G.fs = require("fileManager")
 
-Logger = require("logs/logger")
+Logger = require("logs")
 KernalLogger = Logger:new("kernal/kernal.log")
 
 KernalLogger:log("OS initializing...")
