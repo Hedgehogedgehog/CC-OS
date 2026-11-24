@@ -3,10 +3,15 @@ if not settings.get("ccos.dev") then
 end
 shell.run("clear")
 
-_G.Logger = dofile("/root/sys/libs/logs/logger.lua")
+package.path = "/root/sys/libs/?.lua;/root/sys/libs/?/init.lua;" .. package.path
+
+_G.ccos = {
+    require = require,
+}
+
+Logger = require("logs/logger")
 
 KernalLogger = Logger:new("kernal/kernal.log")
-
 KernalLogger:log("OS initializing...")
 
 local id = multishell.launch({}, ("/root/sys/libs/peripherals/scripts/main.lua"))
