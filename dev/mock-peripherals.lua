@@ -198,7 +198,7 @@ local function installMockPeripherals(entries)
         if type(p) == "string" then return mocks[p], p end
         if type(p) == "table" then
             local mt = getmetatable(p)
-            if type(mt) == "table" and mt.ccosMock then return mocks[mt.name], mt.name end
+            if type(mt) == "table" and mt.CCOSMock then return mocks[mt.name], mt.name end
         end
     end
 
@@ -246,7 +246,7 @@ local function installMockPeripherals(entries)
         if not mock then return native.wrap(name) end
         local t = {}
         for k, fn in pairs(mock.methods) do t[k] = fn end
-        return setmetatable(t, { __name = "peripheral", name = name, type = mock.kind, types = { mock.kind }, ccosMock = true })
+        return setmetatable(t, { __name = "peripheral", name = name, type = mock.kind, types = { mock.kind }, CCOSMock = true })
     end
     function P.find(kind, filter)
         local found = {}

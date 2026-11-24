@@ -281,7 +281,7 @@ function Installer:removeFiles(paths)
 end
 
 function Installer:install()
-    if settings.get("ccos.dev") then
+    if settings.get("CCOS.dev") then
         MainLogger:log("OS is in dev mode, skipping installation")
         return true
     end
@@ -366,6 +366,7 @@ function Installer:checkForUpdates()
     return latestCommit
 
 end
+
 
 function Installer:configComputerSettings()
     MainLogger:log("Configuring Computer Settings")

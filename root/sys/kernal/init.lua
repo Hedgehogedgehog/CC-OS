@@ -1,1 +1,0 @@
-shell.run("/root/sys/peripherals/scripts/main.lua")

@@ -10,7 +10,7 @@
 -- something to find, then boots the OS like a real computer would.
 
 -- run-local.ps1 -Installer turns dev mode off so the installer runs like on a real PC
-settings.set("ccos.dev", rawget(_G, "CCOS_RUN_INSTALLER") ~= true)
+settings.set("CCOS.dev", rawget(_G, "CCOS_RUN_INSTALLER") ~= true)
 settings.set("motd.enable", false)
 settings.save()
 

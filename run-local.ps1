@@ -5,7 +5,7 @@
 .DESCRIPTION
   The VM lives in .vm\ inside this project (its own CraftOS-PC data directory),
   so it never touches your normal CraftOS-PC computers in %APPDATA%.
-  Each launch copies .\root and .\OSadditinalResources into every VM computer,
+  Each launch copies .\root into every VM computer,
   leaving the VM's own data (logs, /UserData) alone, writes the dev startup file
   and boots CraftOS-PC. The VM is marked as a dev machine, so the GitHub updater
   never runs inside it.
@@ -138,14 +138,14 @@ foreach ($pc in $ids) {
     $computer = Join-Path $vmDir "computer\$pc"
     New-Item -ItemType Directory -Force $computer | Out-Null
 
-    # Mirror the OS and your add-ons; keep the VM's own runtime data.
-    Write-Host "Syncing root + OSadditinalResources -> VM computer $pc"
+    # Mirror the OS; keep the VM's own runtime data.
+    Write-Host "Syncing root -> VM computer $pc"
     robocopy (Join-Path $project "root") (Join-Path $computer "root") /MIR /NJH /NJS /NFL /NDL /NP `
         /XD (Join-Path $computer "root\sys\logs\programLogs") /XF main.log .manifest | Out-Null
     if ($LASTEXITCODE -ge 8) { Write-Error "robocopy (root) failed ($LASTEXITCODE)" }
-    robocopy (Join-Path $project "OSadditinalResources") (Join-Path $computer "OSadditinalResources") /MIR `
-        /NJH /NJS /NFL /NDL /NP | Out-Null
-    if ($LASTEXITCODE -ge 8) { Write-Error "robocopy (OSadditinalResources) failed ($LASTEXITCODE)" }
+    # OSadditinalResources is no longer used; drop the copy older runs left in the VM
+    $oldResources = Join-Path $computer "OSadditinalResources"
+    if (Test-Path $oldResources) { Remove-Item -Recurse -Force $oldResources }
     New-Item -ItemType Directory -Force (Join-Path $computer "UserData") | Out-Null
 
     # Set these on _G: plain globals in startup.lua land in the program's own env, which rawget(_G, ...) can't see
