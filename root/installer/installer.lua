@@ -414,7 +414,7 @@ function Installer:createFile(contents, path)
         fs.makeDir(dir)
     end
 
-    local file = fs.open(path, "w+")
+    local file = fs.open(path, "w")
     if file then
         file.write(contents)
         file.close()
