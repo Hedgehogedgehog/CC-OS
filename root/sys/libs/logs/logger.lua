@@ -5,8 +5,8 @@
 local Logger = {}
 Logger.__index = Logger
 
-Logger.mainLog = "root/sys/logs/main.log"
-Logger.progLogPath = "root/sys/logs/programLogs/"
+Logger.mainLog = "root/sys/libs/logs/main.log"
+Logger.progLogPath = "root/sys/libs/logs/programLogs/"
 
 ---Returns the current time as a string, using the real date if available.
 ---@return string
@@ -55,6 +55,10 @@ end
 ---@param progLogPath? string Subfolder appended to the default program log folder (e.g. "myapp/").
 ---@return Logger
 function Logger:new(progLogPath)
+    if not progLogPath then
+        progLogPath = "noLogAssigned.log"
+    
+    end
     local self = setmetatable({}, Logger)
     if progLogPath then
         self.progLogPath = Logger.progLogPath .. progLogPath
