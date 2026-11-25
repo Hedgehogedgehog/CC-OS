@@ -95,17 +95,31 @@ func fitScale() -> float:
 	return maxf(0.02, minf((size.x - 16.0) / pixels.x, (size.y - 16.0) / pixels.y))
 
 
-## At 1x and above, snapped to whole CC pixels so the font stays crisp.
-## Below that, snapped so every cell is a whole number of screen pixels.
+## Canvas scale in this control's units. Snapping is done in real screen pixels
+## (the UI itself may be scaled): at 1x and above to whole font pixels so the
+## glyphs keep their full detail, below that so every cell is a whole number of
+## screen pixels.
 func drawScale() -> float:
-	var viewScale := fitScale() * zoom
-	if viewScale >= 1.0:
-		return floorf(viewScale * 2.0) / 2.0
-	return maxf(1.0, floorf(viewScale * GLYPH.x)) / GLYPH.x
+	var factor := uiScale()
+	var screenScale := fitScale() * zoom * factor
+	if screenScale >= 1.0:
+		screenScale = floorf(screenScale)
+	else:
+		screenScale = maxf(1.0, floorf(screenScale * GLYPH.x)) / GLYPH.x
+	return screenScale / factor
 
 
 func origin() -> Vector2:
-	return ((size - canvasPixels() * drawScale()) / 2.0 + pan).floor()
+	var factor := uiScale()
+	var centered := (size - canvasPixels() * drawScale()) / 2.0 + pan
+	return (centered * factor).floor() / factor
+
+
+## How many screen pixels one unit of this control is (the window's UI scale).
+func uiScale() -> float:
+	if not is_inside_tree():
+		return 1.0
+	return get_viewport().get_final_transform().get_scale().x
 
 
 func cellAt(pos: Vector2) -> Vector2i:

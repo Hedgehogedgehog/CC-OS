@@ -7,6 +7,8 @@ extends Control
 
 const DEFAULT_CHARS_PATH := "res://assets/default_chars.txt"
 const START_SIZE := Vector2i(51, 19)
+## Window size the UI is designed for at 1x. Bigger windows scale the UI up.
+const UI_BASE_SIZE := Vector2(1280, 720)
 
 var palette := CCPalette.new()
 var characterSet := CharacterSet.new()
@@ -29,6 +31,8 @@ var _convertAgain := false
 
 func _ready() -> void:
 	theme = UiKit.makeTheme()
+	get_window().size_changed.connect(_updateUiScale)
+	_updateUiScale()
 	defaultCharacterSet.loadBytes(FileAccess.get_file_as_bytes(DEFAULT_CHARS_PATH))
 	characterSet.copyFrom(defaultCharacterSet)
 	_buildLayout()
@@ -48,11 +52,7 @@ func _buildLayout() -> void:
 	split.add_child(sidebar)
 	var sidebarColumn := VBoxContainer.new()
 	sidebar.add_child(UiKit.margin(sidebarColumn, 10))
-	var title := Label.new()
-	title.text = "PNG > CC"
-	title.add_theme_color_override("font_color", UiKit.YELLOW)
-	title.add_theme_font_size_override("font_size", 36)
-	sidebarColumn.add_child(title)
+	sidebarColumn.add_child(UiKit.ccFontLabel("PNG > CC", UiKit.YELLOW, 2))
 	var tabs := TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sidebarColumn.add_child(tabs)
@@ -95,6 +95,22 @@ func _connectSignals() -> void:
 	for panel: SidebarPanel in [imagePanel, charsPanel, drawPanel, filePanel]:
 		panel.message.connect(canvasArea.flash)
 	paletteDialog.message.connect(canvasArea.flash)
+
+
+## Scales the whole UI to the window size in whole steps (1x, 2x, 3x...).
+## Whole steps keep every font pixel a whole number of screen pixels, so the
+## text is drawn at the font's full detail instead of being smeared.
+func _updateUiScale() -> void:
+	var window := get_window()
+	var windowSize := Vector2(window.size)
+	var fit := minf(windowSize.x / UI_BASE_SIZE.x, windowSize.y / UI_BASE_SIZE.y)
+	var uiScale := maxf(1.0, floorf(fit))
+	var logicalSize := Vector2i((windowSize / uiScale).ceil())
+	if window.content_scale_mode == Window.CONTENT_SCALE_MODE_CANVAS_ITEMS and window.content_scale_size == logicalSize:
+		return
+	window.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	window.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	window.content_scale_size = logicalSize
 
 
 ## Runs shortly after any setting changes: re-convert, or just resize the canvas.

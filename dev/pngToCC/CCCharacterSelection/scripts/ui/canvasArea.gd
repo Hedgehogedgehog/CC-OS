@@ -64,7 +64,7 @@ func updateStatus() -> void:
 		var cell := canvas.getCell(hover.x, hover.y)
 		text += "    x %d  y %d    char %d    color %s    highlight %s" % [
 			hover.x + 1, hover.y + 1, cell.x, CCPalette.HEX[cell.y], CCPalette.HEX[cell.z]]
-	text += "    scale %.1fx" % view.drawScale()
+	text += "    scale %.2fx" % (view.drawScale() * view.uiScale())
 	_status.text = text
 
 
