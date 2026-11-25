@@ -1,0 +1,218 @@
+class_name CCView
+extends Control
+## Draws a CCCanvas in the CC font, scaled to fit, and turns mouse input into
+## drawing signals. Wheel = zoom, middle drag = pan.
+
+signal strokeStarted(cell: Vector2i)
+signal strokePainted(cell: Vector2i)
+signal strokeFinished
+signal pickRequested(cell: Vector2i)
+signal hovered(cell: Vector2i)
+signal viewChanged
+
+const GLYPH := Vector2(12, 18)
+
+var canvas: CCCanvas
+var palette: CCPalette: set = setPalette
+var showGrid := false
+var zoom := 1.0
+var pan := Vector2.ZERO
+var textCursor := Vector2i(-1, -1)
+var hoverCell := Vector2i(-1, -1)
+## func(event: InputEventKey) -> bool. Return true when the key was used.
+var keyHandler: Callable
+
+var _painting := false
+var _panning := false
+var _lastCell := Vector2i.ZERO
+
+
+func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	focus_mode = Control.FOCUS_ALL
+	clip_contents = true
+	resized.connect(queue_redraw)
+
+
+func setPalette(newPalette: CCPalette) -> void:
+	if palette and palette.changed.is_connected(queue_redraw):
+		palette.changed.disconnect(queue_redraw)
+	palette = newPalette
+	palette.changed.connect(queue_redraw)
+	queue_redraw()
+
+
+func canvasPixels() -> Vector2:
+	return Vector2(canvas.width, canvas.height) * GLYPH
+
+
+func fitScale() -> float:
+	if canvas == null or canvas.width == 0 or canvas.height == 0:
+		return 1.0
+	var pixels := canvasPixels()
+	return maxf(0.02, minf((size.x - 16.0) / pixels.x, (size.y - 16.0) / pixels.y))
+
+
+## Snapped to whole CC pixels when big enough, so the font stays crisp.
+func drawScale() -> float:
+	var scale := fitScale() * zoom
+	if scale >= 0.5:
+		scale = floorf(scale * 2.0) / 2.0
+	return scale
+
+
+func origin() -> Vector2:
+	return ((size - canvasPixels() * drawScale()) / 2.0 + pan).floor()
+
+
+func cellAt(pos: Vector2) -> Vector2i:
+	var cell := (pos - origin()) / (GLYPH * drawScale())
+	return Vector2i(floori(cell.x), floori(cell.y))
+
+
+func resetView() -> void:
+	zoom = 1.0
+	pan = Vector2.ZERO
+	queue_redraw()
+	viewChanged.emit()
+
+
+func _draw() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.07, 0.07, 0.09))
+	if canvas == null or palette == null:
+		return
+	var colors := palette.colors
+	var scale := drawScale()
+	var cellSize := GLYPH * scale
+	var start := origin()
+	var w := canvas.width
+	var h := canvas.height
+	var x0 := clampi(floori(-start.x / cellSize.x), 0, w)
+	var x1 := clampi(ceili((size.x - start.x) / cellSize.x), 0, w)
+	var y0 := clampi(floori(-start.y / cellSize.y), 0, h)
+	var y1 := clampi(ceili((size.y - start.y) / cellSize.y), 0, h)
+	draw_rect(Rect2(start - Vector2.ONE, canvasPixels() * scale + Vector2(2, 2)), Color(0.35, 0.35, 0.42), false, 1.0)
+	for y in range(y0, y1):
+		var row := y * w
+		# Highlights, merged into runs of the same color.
+		var x := x0
+		while x < x1:
+			var highlight := canvas.highlights[row + x]
+			var runEnd := x + 1
+			while runEnd < x1 and canvas.highlights[row + runEnd] == highlight:
+				runEnd += 1
+			draw_rect(Rect2(start + Vector2(x * cellSize.x, y * cellSize.y), Vector2((runEnd - x) * cellSize.x, cellSize.y)), colors[highlight])
+			x = runEnd
+		# Characters.
+		for cx in range(x0, x1):
+			var c := canvas.chars[row + cx]
+			if CCFont.isBlank(c):
+				continue
+			draw_texture_rect_region(CCFont.atlas, Rect2(start + Vector2(cx * cellSize.x, y * cellSize.y), cellSize),
+				CCFont.glyphRect(c), colors[canvas.colors[row + cx]])
+	if showGrid and cellSize.x >= 6.0:
+		_drawGrid(start, cellSize, Vector2i(x0, y0), Vector2i(x1, y1))
+	if canvas.inBounds(textCursor.x, textCursor.y):
+		var cursorRect := Rect2(start + Vector2(textCursor) * cellSize, cellSize)
+		draw_rect(cursorRect, UiKit.CYAN, false, 2.0)
+		draw_rect(Rect2(cursorRect.position + Vector2(0, cursorRect.size.y - 3), Vector2(cursorRect.size.x, 3)), UiKit.CYAN)
+	if canvas.inBounds(hoverCell.x, hoverCell.y):
+		draw_rect(Rect2(start + Vector2(hoverCell) * cellSize, cellSize), UiKit.YELLOW, false, 2.0)
+
+
+func _drawGrid(start: Vector2, cellSize: Vector2, from: Vector2i, to: Vector2i) -> void:
+	var lineColor := Color(1, 1, 1, 0.12)
+	var full := canvasPixels() * drawScale()
+	for gx in range(from.x, to.x + 1):
+		draw_line(start + Vector2(gx * cellSize.x, 0), start + Vector2(gx * cellSize.x, full.y), lineColor)
+	for gy in range(from.y, to.y + 1):
+		draw_line(start + Vector2(0, gy * cellSize.y), start + Vector2(full.x, gy * cellSize.y), lineColor)
+
+
+func _gui_input(event: InputEvent) -> void:
+	if canvas == null:
+		return
+	if event is InputEventMouseButton:
+		_onMouseButton(event as InputEventMouseButton)
+	elif event is InputEventMouseMotion:
+		_onMouseMotion(event as InputEventMouseMotion)
+	elif event is InputEventKey and event.pressed:
+		if keyHandler.is_valid() and keyHandler.call(event):
+			accept_event()
+
+
+func _onMouseButton(event: InputEventMouseButton) -> void:
+	match event.button_index:
+		MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN:
+			if event.pressed:
+				_zoomAt(event.position, 1.25 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.8)
+		MOUSE_BUTTON_MIDDLE:
+			_panning = event.pressed
+		MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				grab_focus()
+				_painting = true
+				_lastCell = cellAt(event.position)
+				strokeStarted.emit(_lastCell)
+			elif _painting:
+				_painting = false
+				strokeFinished.emit()
+		MOUSE_BUTTON_RIGHT:
+			if event.pressed:
+				pickRequested.emit(cellAt(event.position))
+		_:
+			return
+	accept_event()
+
+
+func _onMouseMotion(event: InputEventMouseMotion) -> void:
+	if _panning:
+		pan += event.relative
+		viewChanged.emit()
+	var cell := cellAt(event.position)
+	if cell != hoverCell:
+		hoverCell = cell
+		hovered.emit(cell)
+	if _painting and cell != _lastCell:
+		for p in _lineCells(_lastCell, cell):
+			strokePainted.emit(p)
+		_lastCell = cell
+	queue_redraw()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_MOUSE_EXIT:
+		hoverCell = Vector2i(-1, -1)
+		hovered.emit(hoverCell)
+		queue_redraw()
+
+
+func _zoomAt(pos: Vector2, factor: float) -> void:
+	var oldScale := drawScale()
+	var canvasPoint := (pos - origin()) / oldScale
+	zoom = clampf(zoom * factor, 0.1, 60.0)
+	var newScale := drawScale()
+	pan = pos - canvasPoint * newScale - (size - canvasPixels() * newScale) / 2.0
+	queue_redraw()
+	viewChanged.emit()
+
+
+## Cells on the line from a to b (Bresenham), not including a.
+func _lineCells(a: Vector2i, b: Vector2i) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var dx := absi(b.x - a.x)
+	var dy := -absi(b.y - a.y)
+	var stepX := 1 if a.x < b.x else -1
+	var stepY := 1 if a.y < b.y else -1
+	var error := dx + dy
+	var p := a
+	while p != b:
+		var doubled := 2 * error
+		if doubled >= dy:
+			error += dy
+			p.x += stepX
+		if doubled <= dx:
+			error += dx
+			p.y += stepY
+		cells.append(p)
+	return cells
