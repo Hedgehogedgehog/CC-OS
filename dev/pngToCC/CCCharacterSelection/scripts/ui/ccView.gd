@@ -1,7 +1,11 @@
 class_name CCView
 extends Control
-## Draws a CCCanvas in the CC font, scaled to fit, and turns mouse input into
+## Shows a CCCanvas in the CC font, scaled to fit, and turns mouse input into
 ## drawing signals. Wheel = zoom, middle drag = pan.
+##
+## The cells are drawn by shaders/ccDisplay.gdshader in a single pass: the canvas
+## bytes are uploaded as a texture. This node's own _draw only adds the overlays
+## (border, grid, hover and text cursor). Call refreshCells() after editing cells.
 
 signal strokeStarted(cell: Vector2i)
 signal strokePainted(cell: Vector2i)
@@ -11,8 +15,9 @@ signal hovered(cell: Vector2i)
 signal viewChanged
 
 const GLYPH := Vector2(12, 18)
+const DISPLAY_SHADER := preload("res://shaders/ccDisplay.gdshader")
 
-var canvas: CCCanvas
+var canvas: CCCanvas: set = setCanvas
 var palette: CCPalette: set = setPalette
 var showGrid := false
 var zoom := 1.0
@@ -22,24 +27,61 @@ var hoverCell := Vector2i(-1, -1)
 ## func(event: InputEventKey) -> bool. Return true when the key was used.
 var keyHandler: Callable
 
+var _background: ColorRect
+var _cellsRect: ColorRect
+var _material: ShaderMaterial
+var _cellTexture: ImageTexture
 var _painting := false
 var _panning := false
 var _lastCell := Vector2i.ZERO
 
 
-func _ready() -> void:
-	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
 	clip_contents = true
-	resized.connect(queue_redraw)
+	_background = ColorRect.new()
+	_background.color = Color(0.07, 0.07, 0.09)
+	_background.show_behind_parent = true
+	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_background)
+
+	_material = ShaderMaterial.new()
+	_material.shader = DISPLAY_SHADER
+	_material.set_shader_parameter("font_atlas", CCFont.atlas)
+	_cellsRect = ColorRect.new()
+	_cellsRect.material = _material
+	_cellsRect.show_behind_parent = true
+	_cellsRect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_cellsRect)
+	resized.connect(_layoutCells)
+
+
+func setCanvas(newCanvas: CCCanvas) -> void:
+	canvas = newCanvas
+	refreshCells()
 
 
 func setPalette(newPalette: CCPalette) -> void:
-	if palette and palette.changed.is_connected(queue_redraw):
-		palette.changed.disconnect(queue_redraw)
+	if palette and palette.changed.is_connected(_uploadPalette):
+		palette.changed.disconnect(_uploadPalette)
 	palette = newPalette
-	palette.changed.connect(queue_redraw)
-	queue_redraw()
+	palette.changed.connect(_uploadPalette)
+	_uploadPalette()
+
+
+## Uploads the canvas cells to the GPU. Call after changing cells.
+func refreshCells() -> void:
+	if canvas == null:
+		return
+	var image := Image.create_from_data(canvas.width, canvas.height, false, Image.FORMAT_RGBA8, canvas.data)
+	if _cellTexture and Vector2i(_cellTexture.get_size()) == Vector2i(canvas.width, canvas.height):
+		_cellTexture.update(image)
+	else:
+		_cellTexture = ImageTexture.create_from_image(image)
+		_material.set_shader_parameter("cells", _cellTexture)
+		_material.set_shader_parameter("grid_size", Vector2i(canvas.width, canvas.height))
+	_layoutCells()
 
 
 func canvasPixels() -> Vector2:
@@ -53,12 +95,13 @@ func fitScale() -> float:
 	return maxf(0.02, minf((size.x - 16.0) / pixels.x, (size.y - 16.0) / pixels.y))
 
 
-## Snapped to whole CC pixels when big enough, so the font stays crisp.
+## At 1x and above, snapped to whole CC pixels so the font stays crisp.
+## Below that, snapped so every cell is a whole number of screen pixels.
 func drawScale() -> float:
-	var scale := fitScale() * zoom
-	if scale >= 0.5:
-		scale = floorf(scale * 2.0) / 2.0
-	return scale
+	var viewScale := fitScale() * zoom
+	if viewScale >= 1.0:
+		return floorf(viewScale * 2.0) / 2.0
+	return maxf(1.0, floorf(viewScale * GLYPH.x)) / GLYPH.x
 
 
 func origin() -> Vector2:
@@ -73,45 +116,31 @@ func cellAt(pos: Vector2) -> Vector2i:
 func resetView() -> void:
 	zoom = 1.0
 	pan = Vector2.ZERO
-	queue_redraw()
+	_layoutCells()
 	viewChanged.emit()
 
 
-func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.07, 0.07, 0.09))
-	if canvas == null or palette == null:
+func _uploadPalette() -> void:
+	_material.set_shader_parameter("palette", PackedColorArray(palette.colors))
+
+
+func _layoutCells() -> void:
+	if canvas == null:
 		return
-	var colors := palette.colors
-	var scale := drawScale()
-	var cellSize := GLYPH * scale
+	_cellsRect.position = origin()
+	_cellsRect.size = canvasPixels() * drawScale()
+	queue_redraw()
+
+
+func _draw() -> void:
+	if canvas == null:
+		return
+	var viewScale := drawScale()
+	var cellSize := GLYPH * viewScale
 	var start := origin()
-	var w := canvas.width
-	var h := canvas.height
-	var x0 := clampi(floori(-start.x / cellSize.x), 0, w)
-	var x1 := clampi(ceili((size.x - start.x) / cellSize.x), 0, w)
-	var y0 := clampi(floori(-start.y / cellSize.y), 0, h)
-	var y1 := clampi(ceili((size.y - start.y) / cellSize.y), 0, h)
-	draw_rect(Rect2(start - Vector2.ONE, canvasPixels() * scale + Vector2(2, 2)), Color(0.35, 0.35, 0.42), false, 1.0)
-	for y in range(y0, y1):
-		var row := y * w
-		# Highlights, merged into runs of the same color.
-		var x := x0
-		while x < x1:
-			var highlight := canvas.highlights[row + x]
-			var runEnd := x + 1
-			while runEnd < x1 and canvas.highlights[row + runEnd] == highlight:
-				runEnd += 1
-			draw_rect(Rect2(start + Vector2(x * cellSize.x, y * cellSize.y), Vector2((runEnd - x) * cellSize.x, cellSize.y)), colors[highlight])
-			x = runEnd
-		# Characters.
-		for cx in range(x0, x1):
-			var c := canvas.chars[row + cx]
-			if CCFont.isBlank(c):
-				continue
-			draw_texture_rect_region(CCFont.atlas, Rect2(start + Vector2(cx * cellSize.x, y * cellSize.y), cellSize),
-				CCFont.glyphRect(c), colors[canvas.colors[row + cx]])
+	draw_rect(Rect2(start - Vector2.ONE, canvasPixels() * viewScale + Vector2(2, 2)), Color(0.35, 0.35, 0.42), false, 1.0)
 	if showGrid and cellSize.x >= 6.0:
-		_drawGrid(start, cellSize, Vector2i(x0, y0), Vector2i(x1, y1))
+		_drawGrid(start, cellSize)
 	if canvas.inBounds(textCursor.x, textCursor.y):
 		var cursorRect := Rect2(start + Vector2(textCursor) * cellSize, cellSize)
 		draw_rect(cursorRect, UiKit.CYAN, false, 2.0)
@@ -120,9 +149,11 @@ func _draw() -> void:
 		draw_rect(Rect2(start + Vector2(hoverCell) * cellSize, cellSize), UiKit.YELLOW, false, 2.0)
 
 
-func _drawGrid(start: Vector2, cellSize: Vector2, from: Vector2i, to: Vector2i) -> void:
+func _drawGrid(start: Vector2, cellSize: Vector2) -> void:
 	var lineColor := Color(1, 1, 1, 0.12)
 	var full := canvasPixels() * drawScale()
+	var from := Vector2i(clampi(floori(-start.x / cellSize.x), 0, canvas.width), clampi(floori(-start.y / cellSize.y), 0, canvas.height))
+	var to := Vector2i(clampi(ceili((size.x - start.x) / cellSize.x), 0, canvas.width), clampi(ceili((size.y - start.y) / cellSize.y), 0, canvas.height))
 	for gx in range(from.x, to.x + 1):
 		draw_line(start + Vector2(gx * cellSize.x, 0), start + Vector2(gx * cellSize.x, full.y), lineColor)
 	for gy in range(from.y, to.y + 1):
@@ -168,16 +199,17 @@ func _onMouseButton(event: InputEventMouseButton) -> void:
 func _onMouseMotion(event: InputEventMouseMotion) -> void:
 	if _panning:
 		pan += event.relative
+		_layoutCells()
 		viewChanged.emit()
 	var cell := cellAt(event.position)
 	if cell != hoverCell:
 		hoverCell = cell
 		hovered.emit(cell)
+		queue_redraw()
 	if _painting and cell != _lastCell:
 		for p in _lineCells(_lastCell, cell):
 			strokePainted.emit(p)
 		_lastCell = cell
-	queue_redraw()
 
 
 func _notification(what: int) -> void:
@@ -193,7 +225,7 @@ func _zoomAt(pos: Vector2, factor: float) -> void:
 	zoom = clampf(zoom * factor, 0.1, 60.0)
 	var newScale := drawScale()
 	pan = pos - canvasPoint * newScale - (size - canvasPixels() * newScale) / 2.0
-	queue_redraw()
+	_layoutCells()
 	viewChanged.emit()
 
 

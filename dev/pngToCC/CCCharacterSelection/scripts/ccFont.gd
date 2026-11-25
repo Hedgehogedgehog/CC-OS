@@ -19,6 +19,8 @@ var atlas: Texture2D
 var font: FontFile
 ## For each char 0-255: indices (y * PIXELS_W + x) of its lit pixels at CC resolution.
 var masks: Array[PackedInt32Array] = []
+## The same masks as a 54 x 256 texture for the conversion shader.
+var maskTexture: ImageTexture
 
 
 func _init() -> void:
@@ -28,6 +30,7 @@ func _init() -> void:
 		atlasImage.decompress()
 	atlasImage.convert(Image.FORMAT_RGBA8)
 	_buildMasks(atlasImage)
+	maskTexture = _buildMaskTexture()
 	font = _buildFont(atlasImage)
 
 
@@ -55,6 +58,17 @@ func _buildMasks(atlasImage: Image) -> void:
 				if alpha >= 2.0:
 					lit.append(y * PIXELS_W + x)
 		masks.append(lit)
+
+
+func _buildMaskTexture() -> ImageTexture:
+	var pixelCount := PIXELS_W * PIXELS_H
+	var bytes := PackedByteArray()
+	bytes.resize(pixelCount * 256)
+	bytes.fill(0)
+	for c in 256:
+		for p in masks[c]:
+			bytes[c * pixelCount + p] = 255
+	return ImageTexture.create_from_image(Image.create_from_data(pixelCount, 256, false, Image.FORMAT_R8, bytes))
 
 
 func _buildFont(atlasImage: Image) -> FontFile:

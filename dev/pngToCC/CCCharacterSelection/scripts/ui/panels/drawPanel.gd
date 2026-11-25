@@ -72,7 +72,7 @@ func _build() -> void:
 
 func _refreshBrush() -> void:
 	_brushPreview.canvas.setCell(0, 0, brush.character, brush.color, brush.highlight)
-	_brushPreview.queue_redraw()
+	_brushPreview.refreshCells()
 	_brushInfo.text = "Char %d (0x%02X)\nColor %s  %s\nHighlight %s  %s" % [
 		brush.character, brush.character,
 		CCPalette.HEX[brush.color], CCPalette.NAMES[brush.color],

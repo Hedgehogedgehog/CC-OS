@@ -2,6 +2,9 @@ class_name CCCanvas
 extends RefCounted
 ## A grid of CC cells. Each cell is (char byte, color 0-15, highlight 0-15).
 ##
+## Cells are stored as RGBA bytes (R = char, G = color, B = highlight, A = 255),
+## so the data can go straight into a GPU texture for the shaders.
+##
 ## "abc" file format: one line per row, 3 bytes per cell:
 ##   a = the character byte, b = color as a hex digit 0-f, c = highlight as a hex digit 0-f
 ## Rows end with "\n". Read it in CC with fs.open(path, "rb").
@@ -10,22 +13,24 @@ const HEX := "0123456789abcdef"
 
 var width := 0
 var height := 0
-var chars := PackedByteArray()
-var colors := PackedByteArray()
-var highlights := PackedByteArray()
+## 4 bytes per cell, row by row.
+var data := PackedByteArray()
 
 
 static func create(newWidth: int, newHeight: int, character := 32, color := 0, highlight := 15) -> CCCanvas:
 	var canvas := CCCanvas.new()
 	canvas.width = newWidth
 	canvas.height = newHeight
-	var count := newWidth * newHeight
-	canvas.chars.resize(count)
-	canvas.chars.fill(character)
-	canvas.colors.resize(count)
-	canvas.colors.fill(color)
-	canvas.highlights.resize(count)
-	canvas.highlights.fill(highlight)
+	canvas.fillAll(character, color, highlight)
+	return canvas
+
+
+## Wraps RGBA8 bytes (for example read back from the conversion shader).
+static func fromData(newWidth: int, newHeight: int, bytes: PackedByteArray) -> CCCanvas:
+	var canvas := CCCanvas.new()
+	canvas.width = newWidth
+	canvas.height = newHeight
+	canvas.data = bytes
 	return canvas
 
 
@@ -35,44 +40,41 @@ func inBounds(x: int, y: int) -> bool:
 
 ## Returns Vector3i(char, color, highlight).
 func getCell(x: int, y: int) -> Vector3i:
-	var i := y * width + x
-	return Vector3i(chars[i], colors[i], highlights[i])
+	var i := (y * width + x) * 4
+	return Vector3i(data[i], data[i + 1], data[i + 2])
 
 
 ## Pass -1 for a channel to leave it unchanged.
 func setCell(x: int, y: int, character: int, color: int, highlight: int) -> void:
-	var i := y * width + x
+	var i := (y * width + x) * 4
 	if character >= 0:
-		chars[i] = character
+		data[i] = character
 	if color >= 0:
-		colors[i] = color
+		data[i + 1] = color
 	if highlight >= 0:
-		highlights[i] = highlight
+		data[i + 2] = highlight
 
 
 func fillAll(character: int, color: int, highlight: int) -> void:
-	chars.fill(character)
-	colors.fill(color)
-	highlights.fill(highlight)
+	var image := Image.create(maxi(width, 1), maxi(height, 1), false, Image.FORMAT_RGBA8)
+	image.fill(Color8(character, color, highlight, 255))
+	data = image.get_data()
+	data.resize(width * height * 4)
 
 
 func copy() -> CCCanvas:
-	var canvas := CCCanvas.new()
-	canvas.width = width
-	canvas.height = height
-	canvas.chars = chars.duplicate()
-	canvas.colors = colors.duplicate()
-	canvas.highlights = highlights.duplicate()
-	return canvas
+	return CCCanvas.fromData(width, height, data.duplicate())
 
 
 ## New canvas of the given size, keeping the overlapping top-left content.
 func resized(newWidth: int, newHeight: int) -> CCCanvas:
 	var canvas := CCCanvas.create(newWidth, newHeight)
+	var keepBytes := mini(newWidth, width) * 4
 	for y in mini(newHeight, height):
-		for x in mini(newWidth, width):
-			var cell := getCell(x, y)
-			canvas.setCell(x, y, cell.x, cell.y, cell.z)
+		var from := y * width * 4
+		var to := y * newWidth * 4
+		for i in keepBytes:
+			canvas.data[to + i] = data[from + i]
 	return canvas
 
 
@@ -82,10 +84,10 @@ func toAbc() -> PackedByteArray:
 	var o := 0
 	for y in height:
 		for x in width:
-			var i := y * width + x
-			out[o] = chars[i]
-			out[o + 1] = HEX.unicode_at(colors[i])
-			out[o + 2] = HEX.unicode_at(highlights[i])
+			var i := (y * width + x) * 4
+			out[o] = data[i]
+			out[o + 1] = HEX.unicode_at(data[i + 1])
+			out[o + 2] = HEX.unicode_at(data[i + 2])
 			o += 3
 		out[o] = 10
 		o += 1
@@ -96,15 +98,11 @@ func toAbc() -> PackedByteArray:
 func toBlit() -> PackedByteArray:
 	var out := PackedByteArray()
 	for y in height:
-		var start := y * width
-		out.append_array(chars.slice(start, start + width))
-		out.append(10)
-		for x in width:
-			out.append(HEX.unicode_at(colors[start + x]))
-		out.append(10)
-		for x in width:
-			out.append(HEX.unicode_at(highlights[start + x]))
-		out.append(10)
+		for channel in 3:
+			for x in width:
+				var value := data[(y * width + x) * 4 + channel]
+				out.append(value if channel == 0 else HEX.unicode_at(value))
+			out.append(10)
 	return out
 
 
@@ -120,12 +118,12 @@ static func hexValue(byte: int) -> int:
 
 ## Parses the abc format. Every row must be the same width. The width is found by
 ## checking where the "\n" row ends line up, so char 10 inside a row is still fine.
-static func fromAbc(data: PackedByteArray) -> CCCanvas:
-	if data.is_empty():
+static func fromAbc(bytesIn: PackedByteArray) -> CCCanvas:
+	if bytesIn.is_empty():
 		return null
-	var bytes := data
+	var bytes := bytesIn
 	if bytes[bytes.size() - 1] != 10:
-		bytes = data.duplicate()
+		bytes = bytesIn.duplicate()
 		bytes.append(10)
 	var total := bytes.size()
 	for rowWidth in range(1, total):
@@ -134,6 +132,7 @@ static func fromAbc(data: PackedByteArray) -> CCCanvas:
 			break
 		if total % rowBytes != 0:
 			continue
+		@warning_ignore("integer_division")
 		var rowCount := total / rowBytes
 		if not _abcLayoutFits(bytes, rowWidth, rowCount):
 			continue
@@ -158,10 +157,10 @@ static func _abcLayoutFits(bytes: PackedByteArray, rowWidth: int, rowCount: int)
 	return true
 
 
-static func fromBlit(data: PackedByteArray) -> CCCanvas:
+static func fromBlit(bytes: PackedByteArray) -> CCCanvas:
 	var lines: Array[PackedByteArray] = []
 	var current := PackedByteArray()
-	for byte in data:
+	for byte in bytes:
 		if byte == 10:
 			lines.append(current)
 			current = PackedByteArray()
@@ -174,6 +173,7 @@ static func fromBlit(data: PackedByteArray) -> CCCanvas:
 			lines[i] = lines[i].slice(0, lines[i].size() - 1)
 	if lines.is_empty() or lines.size() % 3 != 0:
 		return null
+	@warning_ignore("integer_division")
 	var rowCount := lines.size() / 3
 	var rowWidth := 0
 	for y in rowCount:

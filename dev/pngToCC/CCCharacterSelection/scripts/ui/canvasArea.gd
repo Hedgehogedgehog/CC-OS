@@ -77,5 +77,5 @@ func _onCanvasReplaced() -> void:
 
 
 func _onContentChanged() -> void:
-	view.queue_redraw()
+	view.refreshCells()
 	updateStatus()

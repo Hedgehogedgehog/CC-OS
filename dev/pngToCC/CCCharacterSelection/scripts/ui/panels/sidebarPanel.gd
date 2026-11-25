@@ -3,7 +3,8 @@ extends ScrollContainer
 ## Base class for a sidebar tab: a scrolling column of controls.
 ## The node name becomes the tab title.
 
-## A short message to show the user.
+## A short message to show the user. Emitted by the subclasses.
+@warning_ignore("unused_signal")
 signal message(text: String)
 
 var content: VBoxContainer

@@ -23,6 +23,8 @@ var drawPanel: DrawPanel
 var filePanel: FilePanel
 var paletteDialog: PaletteDialog
 var updateTimer: Timer
+var _converting := false
+var _convertAgain := false
 
 
 func _ready() -> void:
@@ -36,6 +38,7 @@ func _ready() -> void:
 
 
 func _buildLayout() -> void:
+	add_child(converter)
 	var split := HSplitContainer.new()
 	split.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(split)
@@ -103,20 +106,30 @@ func _applySettings() -> void:
 		document.replace(document.canvas.resized(wanted.x, wanted.y))
 
 
+## Converts on the GPU (takes a frame). If asked again while busy, runs once more after.
 func convertImage() -> void:
 	if imagePanel.sourceImage == null:
 		imagePanel.setConvertInfo("Upload an image first.")
 		return
 	updateTimer.stop()
-	var wanted := imagePanel.getCanvasSize()
-	var started := Time.get_ticks_msec()
-	converter.useColor = imagePanel.useColor()
-	document.replace(converter.convertImage(imagePanel.sourceImage, wanted.x, wanted.y))
-	imagePanel.setConvertInfo("Converted to %d x %d in %d ms" % [wanted.x, wanted.y, Time.get_ticks_msec() - started])
+	if _converting:
+		_convertAgain = true
+		return
+	_converting = true
+	_convertAgain = true
+	while _convertAgain:
+		_convertAgain = false
+		var wanted := imagePanel.getCanvasSize()
+		var started := Time.get_ticks_msec()
+		converter.useColor = imagePanel.useColor()
+		var result: CCCanvas = await converter.convertImage(imagePanel.sourceImage, wanted.x, wanted.y)
+		document.replace(result)
+		imagePanel.setConvertInfo("Converted to %d x %d in %d ms" % [wanted.x, wanted.y, Time.get_ticks_msec() - started])
+	_converting = false
 
 
 func _onImageLoaded(_image: Image) -> void:
-	convertImage()
+	await convertImage()
 	canvasArea.view.resetView()
 
 
